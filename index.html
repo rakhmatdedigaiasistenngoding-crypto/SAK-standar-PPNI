@@ -204,8 +204,22 @@
     .rsj-sheet { background: #ffffff; color: #000000; width: 100%; min-width: 960px; margin: 0 auto; padding: 16px; font-family: "Times New Roman", Arial, serif; font-size: 10pt; line-height: 1.32; box-shadow: 0 2px 10px rgba(0,0,0,0.12); }
     .rsj-docno-row { display: flex; justify-content: flex-end; margin-bottom: 6px; }
     .rsj-docno-box { border: 1.2px solid #000; padding: 3px 14px; font-size: 9pt; font-weight: 600; min-width: 150px; min-height: 23px; text-align: center; border-radius: 3px; background: #fff; color: #000; }
+    .rsj-kop-table { width: 100%; border-collapse: collapse; border: 1.5px solid #000; border-bottom: none; }
+    .rsj-kop-table td { border: 1px solid #000; border-bottom: none; padding: 5px 7px; vertical-align: top; color: #000; }
+    .rsj-kop-table tr:first-child td { border-top: 1.5px solid #000; }
+    .rsj-kop-table tr + tr td { border-top: 1px solid #000; }
     .rsj-table { width: 100%; border-collapse: collapse; border: 1.5px solid #000; }
     .rsj-table th, .rsj-table td { border: 1px solid #000; padding: 5px 7px; vertical-align: top; color: #000; }
+    tfoot.rsj-tfoot { display: none; }
+    tfoot.rsj-tfoot td.rsj-foot-cell {
+      border: none !important;
+      border-top: 1.5px solid #000 !important;
+      padding: 0 !important;
+      height: 1px !important;
+      font-size: 0 !important;
+      line-height: 0 !important;
+      background: transparent !important;
+    }
     .rsj-kop-logo { width: 74px; text-align: center; vertical-align: middle !important; border-right: none !important; padding-right: 4px !important; }
     .rsj-kop-logo img { width: 56px; height: auto; display: block; margin: 0 auto; }
     .rsj-kop-title { text-align: center; vertical-align: middle !important; border-left: none !important; padding-left: 4px !important; }
@@ -277,7 +291,21 @@
       body.print-rsj > *:not(#rsjPrintRoot) { display: none !important; }
       body.print-rsj #rsjPrintRoot { display: block !important; }
       body.print-rsj .rsj-sheet { min-width: 0 !important; width: 100% !important; padding: 0 !important; box-shadow: none !important; font-size: 9pt; }
+      body.print-rsj .rsj-table thead { display: table-header-group; }
+      body.print-rsj tfoot.rsj-tfoot { display: table-footer-group !important; }
+      body.print-rsj .rsj-list li,
+      body.print-rsj .rsj-scale-tbl tr,
+      body.print-rsj .rsj-sec-lbl { break-inside: avoid; page-break-inside: avoid; }
+      body.print-web mark.hl-match { background: transparent !important; color: inherit !important; padding: 0 !important; font-weight: inherit !important; }
     }
+
+    /* Search Highlight & Sidebar Match Snippet */
+    mark.hl-match { background: #fef08a; color: #0f172a; padding: 0 2px; border-radius: 3px; font-weight: 700; }
+    .dark mark.hl-match { background: #f59e0b; color: #0b0f19; }
+    .diag-match-snip { margin-top: 5px; padding: 4px 7px; border-radius: 5px; background: var(--warn-bg); border-left: 3px solid #eab308; font-size: 11px; line-height: 1.38; color: var(--text); overflow-wrap: anywhere; }
+    .diag-match-lbl { font-weight: 700; color: var(--warn-text); margin-right: 3px; }
+    .tab-hit-badge { display: inline-block; margin-left: 4px; padding: 0 5px; border-radius: 99px; font-size: 10px; font-weight: 700; background: #fef08a; color: #713f12; border: 1px solid #facc15; }
+    .dark .tab-hit-badge { background: #b45309; color: #fef3c7; border-color: #d97706; }
 
     @media (max-width: 1080px) {
       .rsj-form-grid, .rsj-form-grid-pages { grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); }
@@ -323,7 +351,7 @@
       <div class="sidebar-search">
         <div class="search-wrap">
           <svg class="svg-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-          <input type="text" id="searchInput" class="search-input" placeholder="Cari kode (mis. D.0080), diagnosis, atau gejala..." oninput="renderList()">
+          <input type="text" id="searchInput" class="search-input" placeholder="Cari kode (mis. D.0080), diagnosis, atau gejala..." oninput="onSearchInput()">
         </div>
         <div class="filter-pills">
           <button class="pill-btn active" id="pillAll" onclick="setFilter('ALL')">Semua (149)</button>
@@ -473,6 +501,101 @@
       return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
     }
 
+    function getQuery() {
+      const el = document.getElementById('searchInput');
+      return el ? el.value.trim() : '';
+    }
+
+    function escapeRegex(s) {
+      return String(s).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    }
+
+    function hlText(s, q) {
+      if (s === null || s === undefined) return '';
+      const raw = String(s);
+      const term = (q || '').trim();
+      if (!term) return esc(raw);
+      const re = new RegExp('(' + escapeRegex(term) + ')', 'gi');
+      const parts = raw.split(re);
+      if (parts.length === 1) return esc(raw);
+      return parts.map((part, idx) => (idx % 2 === 1) ? `<mark class="hl-match">${esc(part)}</mark>` : esc(part)).join('');
+    }
+
+    function countHits(str, re) {
+      if (!str) return 0;
+      const m = String(str).match(re);
+      return m ? m.length : 0;
+    }
+
+    function getItemSearchFields(item) {
+      const sikiText = [];
+      (item.siki.intervensi_utama || []).forEach(x => sikiText.push(x));
+      (item.siki.intervensi_pendukung || []).forEach(x => sikiText.push(x));
+      if (item.siki.pertemuan_list && item.siki.pertemuan_list.length) {
+        item.siki.pertemuan_list.forEach(p => {
+          sikiText.push(p.nama_intervensi || '', p.definisi || '');
+          sikiText.push(...(p.observasi || []), ...(p.terapeutik || []), ...(p.edukasi || []), ...(p.kolaborasi || []));
+        });
+      } else {
+        const t = item.siki.tindakan || {};
+        sikiText.push(...(t.observasi || []), ...(t.terapeutik || []), ...(t.edukasi || []), ...(t.kolaborasi || []));
+      }
+      return [
+        { label: 'Kode SDKI', tab: 0, text: item.kode_sdki },
+        { label: 'Diagnosis', tab: 0, text: item.nama_diagnosis },
+        { label: 'Subkategori', tab: 0, text: item.subkategori },
+        { label: 'Definisi', tab: 0, text: item.definisi },
+        { label: 'Penyebab / Risiko', tab: 0, text: [...(item.penyebab || []), ...(item.faktor_risiko || [])].join('; ') },
+        { label: 'Gejala Mayor (S)', tab: 0, text: (item.gejala_mayor && item.gejala_mayor.subjektif) || '' },
+        { label: 'Gejala Mayor (O)', tab: 0, text: (item.gejala_mayor && item.gejala_mayor.objektif) || '' },
+        { label: 'Gejala Minor (S)', tab: 0, text: (item.gejala_minor && item.gejala_minor.subjektif) || '' },
+        { label: 'Gejala Minor (O)', tab: 0, text: (item.gejala_minor && item.gejala_minor.objektif) || '' },
+        { label: 'Kondisi Klinis', tab: 0, text: (item.kondisi_klinis || []).join('; ') },
+        { label: 'Luaran SLKI', tab: 1, text: [item.slki.luaran_utama, item.slki.definisi_slki, ...(item.slki.kriteria_hasil || []), ...(item.slki.luaran_tambahan || [])].join('; ') },
+        { label: 'Intervensi SIKI', tab: 2, text: sikiText.join('; ') }
+      ];
+    }
+
+    function findSearchSnippet(item, q) {
+      if (!q) return null;
+      const ql = q.toLowerCase();
+      const fields = getItemSearchFields(item);
+      let fallback = null;
+      for (const f of fields) {
+        if (!f.text) continue;
+        const pos = f.text.toLowerCase().indexOf(ql);
+        if (pos !== -1) {
+          const isHeader = (f.label === 'Kode SDKI' || f.label === 'Diagnosis' || f.label === 'Subkategori');
+          const start = Math.max(0, pos - 32);
+          const end = Math.min(f.text.length, pos + q.length + 48);
+          let snip = f.text.slice(start, end).trim();
+          if (start > 0) snip = '...' + snip;
+          if (end < f.text.length) snip = snip + '...';
+          const res = { label: f.label, tab: f.tab, snippet: snip };
+          if (!isHeader) return res;
+          if (!fallback) fallback = res;
+        }
+      }
+      return fallback;
+    }
+
+    function getTabMatchCounts(item, q) {
+      const counts = { 0: 0, 1: 0, 2: 0 };
+      if (!q) return counts;
+      const re = new RegExp(escapeRegex(q), 'gi');
+      const fields = getItemSearchFields(item);
+      for (const f of fields) {
+        if (f.label === 'Kode SDKI' || f.label === 'Diagnosis' || f.label === 'Subkategori') continue;
+        counts[f.tab] += countHits(f.text, re);
+      }
+      return counts;
+    }
+
+    function onSearchInput() {
+      renderList();
+      if (!learningMode) renderDetail();
+    }
+
     function toggleTheme() {
       isDark = !isDark;
       document.documentElement.classList.toggle('dark', isDark);
@@ -491,7 +614,8 @@
     }
 
     function renderList() {
-      const q = document.getElementById('searchInput').value.toLowerCase().trim();
+      const qRaw = getQuery();
+      const q = qRaw.toLowerCase();
       const sub = document.getElementById('subcatSelect').value;
       const stFilter = document.getElementById('statusSelect').value;
       const listEl = document.getElementById('diagList');
@@ -502,8 +626,8 @@
         if (stFilter === 'VERIFIED' && item.sumber_data === 'TAKSONOMI_RINGKAS') return false;
         if (stFilter === 'TAKSONOMI_RINGKAS' && item.sumber_data !== 'TAKSONOMI_RINGKAS') return false;
         if (q) {
-          const hay = (item.kode_sdki + ' ' + item.nama_diagnosis + ' ' + item.subkategori + ' ' + item.definisi + ' ' + item.gejala_mayor.subjektif + ' ' + item.gejala_mayor.objektif).toLowerCase();
-          if (!hay.includes(q)) return false;
+          const hit = getItemSearchFields(item).some(f => f.text && f.text.toLowerCase().includes(q));
+          if (!hit) return false;
         }
         return true;
       });
@@ -519,13 +643,18 @@
         const vBadge = item.sumber_data === 'TAKSONOMI_RINGKAS'
           ? '<span class="badge-ringkas">Ringkas</span>'
           : '<span class="badge-verif">Lengkap</span>';
+        const snipObj = q ? findSearchSnippet(item, qRaw) : null;
+        const snipHtml = (snipObj && snipObj.label !== 'Kode SDKI' && snipObj.label !== 'Diagnosis' && snipObj.label !== 'Subkategori')
+          ? `<div class="diag-match-snip"><span class="diag-match-lbl">${esc(snipObj.label)}:</span>${hlText(snipObj.snippet, qRaw)}</div>`
+          : '';
         return `<div class="diag-item ${isActive ? 'active' : ''}" onclick="selectDiagnosis('${item.kode_sdki}')">
           <div class="diag-item-header">
-            <span class="badge-code">${item.kode_sdki}</span>
+            <span class="badge-code">${hlText(item.kode_sdki, qRaw)}</span>
             <div class="badge-group">${vBadge} ${jBadge}</div>
           </div>
-          <div class="diag-title">${esc(item.nama_diagnosis)}</div>
-          <div class="diag-meta">${esc(item.subkategori)} &bull; ${esc(item.jenis_diagnosis)}</div>
+          <div class="diag-title">${hlText(item.nama_diagnosis, qRaw)}</div>
+          <div class="diag-meta">${hlText(item.subkategori, qRaw)} &bull; ${esc(item.jenis_diagnosis)}</div>
+          ${snipHtml}
         </div>`;
       }).join('');
     }
@@ -534,9 +663,25 @@
       learningMode = false;
       document.getElementById('btnLearnMode').classList.remove('active-mode');
       selectedKode = kode;
-      activeTab = 0;
+      const qRaw = getQuery();
+      const item = DATA.find(x => x.kode_sdki === kode);
+      if (qRaw && item) {
+        const counts = getTabMatchCounts(item, qRaw);
+        if (counts[0] > 0) activeTab = 0;
+        else if (counts[1] > 0) activeTab = 1;
+        else if (counts[2] > 0) activeTab = 2;
+        else activeTab = 0;
+      } else {
+        activeTab = 0;
+      }
       renderList();
       renderDetail();
+      if (qRaw) {
+        setTimeout(() => {
+          const firstMark = document.querySelector('#detailView .tab-pane.active mark.hl-match');
+          if (firstMark) firstMark.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }, 40);
+      }
     }
 
     function switchTab(idx) {
@@ -555,22 +700,25 @@
       }
     }
 
-    function buildFormulaPreview(item) {
+    function buildFormulaPreview(item, q) {
       if (item.jenis_diagnosis === 'Risiko') {
         const fr = (item.faktor_risiko && item.faktor_risiko.length) ? item.faktor_risiko[0] : '[Faktor Risiko sesuai pengkajian]';
-        return `<strong>Format Diagnosis Risiko (2 Bagian / PR):</strong><br><code>${esc(item.nama_diagnosis)}</code> <em>dibuktikan dengan (d.d.)</em> <code>${esc(fr)}</code>.<br><small style="color:var(--text-muted)">Catatan aturan: Diagnosis Risiko DILARANG mencantumkan Penyebab (b.d.) maupun Tanda &amp; Gejala.</small>`;
+        return `<strong>Format Diagnosis Risiko (2 Bagian / PR):</strong><br><code>${hlText(item.nama_diagnosis, q)}</code> <em>dibuktikan dengan (d.d.)</em> <code>${hlText(fr, q)}</code>.<br><small style="color:var(--text-muted)">Catatan aturan: Diagnosis Risiko DILARANG mencantumkan Penyebab (b.d.) maupun Tanda &amp; Gejala.</small>`;
       }
       if (item.jenis_diagnosis === 'Promosi Kesehatan') {
-        return `<strong>Format Diagnosis Promosi Kesehatan (2 Bagian / PS):</strong><br><code>${esc(item.nama_diagnosis)}</code> <em>dibuktikan dengan (d.d.)</em> <code>${esc(item.gejala_mayor.subjektif)}</code>.<br><small style="color:var(--text-muted)">Catatan aturan: Diagnosis Promosi Kesehatan tidak menggunakan unsur Penyebab (b.d.).</small>`;
+        return `<strong>Format Diagnosis Promosi Kesehatan (2 Bagian / PS):</strong><br><code>${hlText(item.nama_diagnosis, q)}</code> <em>dibuktikan dengan (d.d.)</em> <code>${hlText(item.gejala_mayor.subjektif, q)}</code>.<br><small style="color:var(--text-muted)">Catatan aturan: Diagnosis Promosi Kesehatan tidak menggunakan unsur Penyebab (b.d.).</small>`;
       }
       const py = (item.penyebab && item.penyebab.length) ? item.penyebab[0] : '[Penyebab / Etiologi]';
       const gd = item.gejala_mayor.objektif && !item.gejala_mayor.objektif.includes('tidak tersedia') ? item.gejala_mayor.objektif : item.gejala_mayor.subjektif;
-      return `<strong>Format Diagnosis Aktual (3 Bagian / PES):</strong><br><code>${esc(item.nama_diagnosis)}</code> <em>berhubungan dengan (b.d.)</em> <code>${esc(py)}</code> <em>dibuktikan dengan (d.d.)</em> <code>${esc(gd)}</code>.<br><small style="color:var(--text-muted)">Catatan aturan: Tanda &amp; Gejala Mayor wajib ditemukan 80% - 100%; Tanda Minor bersifat opsional/pendukung.</small>`;
+      return `<strong>Format Diagnosis Aktual (3 Bagian / PES):</strong><br><code>${hlText(item.nama_diagnosis, q)}</code> <em>berhubungan dengan (b.d.)</em> <code>${hlText(py, q)}</code> <em>dibuktikan dengan (d.d.)</em> <code>${hlText(gd, q)}</code>.<br><small style="color:var(--text-muted)">Catatan aturan: Tanda &amp; Gejala Mayor wajib ditemukan 80% - 100%; Tanda Minor bersifat opsional/pendukung.</small>`;
     }
 
     function renderDetail() {
       const item = DATA.find(x => x.kode_sdki === selectedKode);
       if (!item) return;
+      const qRaw = getQuery();
+      const hl = (s) => hlText(s, qRaw);
+      const tabHits = getTabMatchCounts(item, qRaw);
 
       const badgeRsj = item.jenis_rsj === 'JIWA' ? '<span class="badge-jiwa" style="font-size:11px; padding:3px 9px;">KATEGORI RSJ: JIWA</span>' : '<span class="badge-fisik" style="font-size:11px; padding:3px 9px;">KATEGORI RSJ: NON-JIWA / FISIK</span>';
       const badgeJenisDiag = `<span class="badge-code" style="font-size:11px; padding:3px 8px;">Jenis: ${esc(item.jenis_diagnosis)}</span>`;
@@ -586,12 +734,12 @@
         const frList = (item.faktor_risiko && item.faktor_risiko.length) ? item.faktor_risiko : (item.penyebab || []);
         etiologiHtml = `<div class="info-section">
           <h3>Faktor Risiko (Diagnosis Risiko — Tanpa Etiologi b.d.)</h3>
-          <div class="tag-grid">${frList.map(p => `<span class="tag-chip">&bull; ${esc(p)}</span>`).join('')}</div>
+          <div class="tag-grid">${frList.map(p => `<span class="tag-chip">&bull; ${hl(p)}</span>`).join('')}</div>
         </div>`;
       } else if (item.penyebab && item.penyebab.length) {
         etiologiHtml = `<div class="info-section">
           <h3>Penyebab (Berhubungan dengan / b.d.)</h3>
-          <div class="tag-grid">${item.penyebab.map(p => `<span class="tag-chip">&bull; ${esc(p)}</span>`).join('')}</div>
+          <div class="tag-grid">${item.penyebab.map(p => `<span class="tag-chip">&bull; ${hl(p)}</span>`).join('')}</div>
         </div>`;
       }
 
@@ -603,7 +751,7 @@
           <tbody>
             ${item.slki.skala_tabel.map((row, idx) => `<tr>
               <td>${idx + 1}</td>
-              <td><strong>${esc(row.indikator)}</strong></td>
+              <td><strong>${hl(row.indikator)}</strong></td>
               <td>${esc(row.skala1)} (1)</td>
               <td>${esc(row.skala2)} (2)</td>
               <td>${esc(row.skala3)} (3)</td>
@@ -616,7 +764,7 @@
         slkiTableHtml = `<table class="indicator-table">
           <thead><tr><th>Indikator Kriteria Hasil</th><th>Skor Awal</th><th>Target Skor Optimal (PPNI)</th></tr></thead>
           <tbody>
-            ${item.slki.kriteria_hasil.map(k => `<tr><td>${esc(k)}</td><td>1 - 3 (Perlu Intervensi)</td><td><strong>5 (${esc(item.slki.ekspektasi)})</strong></td></tr>`).join('')}
+            ${item.slki.kriteria_hasil.map(k => `<tr><td>${hl(k)}</td><td>1 - 3 (Perlu Intervensi)</td><td><strong>5 (${esc(item.slki.ekspektasi)})</strong></td></tr>`).join('')}
           </tbody>
         </table>`;
       }
@@ -638,25 +786,25 @@
       sikiBodyHtml = plist.map(p => `
         <div class="sp-block">
           <div class="sp-title">
-            <span>${esc(p.pertemuan)}: ${esc(p.nama_intervensi)} ${p.kode_siki ? '(' + esc(p.kode_siki) + ')' : ''}</span>
+            <span>${esc(p.pertemuan)}: ${hl(p.nama_intervensi)} ${p.kode_siki ? '(' + esc(p.kode_siki) + ')' : ''}</span>
             ${p.halaman ? `<span class="badge-code">${esc(p.halaman)}</span>` : ''}
           </div>
-          ${p.definisi ? `<p style="font-size:12px; color:var(--text-muted); margin-bottom:10px;"><em>Definisi: ${esc(p.definisi)}</em></p>` : ''}
+          ${p.definisi ? `<p style="font-size:12px; color:var(--text-muted); margin-bottom:10px;"><em>Definisi: ${hl(p.definisi)}</em></p>` : ''}
           <div class="otec-card">
             <div class="otec-header" style="color:#0284c7;">${ICONS.obs} OBSERVASI (O)</div>
-            <div class="otec-body"><ul>${(p.observasi || []).map(x => `<li>${esc(x)}</li>`).join('') || '<li>Sesuai kondisi klinis pasien</li>'}</ul></div>
+            <div class="otec-body"><ul>${(p.observasi || []).map(x => `<li>${hl(x)}</li>`).join('') || '<li>Sesuai kondisi klinis pasien</li>'}</ul></div>
           </div>
           <div class="otec-card">
             <div class="otec-header" style="color:#0d9488;">${ICONS.ter} TERAPEUTIK (T)</div>
-            <div class="otec-body"><ul>${(p.terapeutik || []).map(x => `<li>${esc(x)}</li>`).join('') || '<li>Sesuai kondisi klinis pasien</li>'}</ul></div>
+            <div class="otec-body"><ul>${(p.terapeutik || []).map(x => `<li>${hl(x)}</li>`).join('') || '<li>Sesuai kondisi klinis pasien</li>'}</ul></div>
           </div>
           <div class="otec-card">
             <div class="otec-header" style="color:#d97706;">${ICONS.edu} EDUKASI (E)</div>
-            <div class="otec-body"><ul>${(p.edukasi || []).map(x => `<li>${esc(x)}</li>`).join('') || '<li>Berikan edukasi sesuai kebutuhan klien/keluarga</li>'}</ul></div>
+            <div class="otec-body"><ul>${(p.edukasi || []).map(x => `<li>${hl(x)}</li>`).join('') || '<li>Berikan edukasi sesuai kebutuhan klien/keluarga</li>'}</ul></div>
           </div>
           <div class="otec-card">
             <div class="otec-header" style="color:#7c3aed;">${ICONS.kol} KOLABORASI (K)</div>
-            <div class="otec-body"><ul>${(p.kolaborasi || []).map(x => `<li>${esc(x)}</li>`).join('') || '<li>Kolaborasi dengan DPJP / tim multidisiplin jika perlu</li>'}</ul></div>
+            <div class="otec-body"><ul>${(p.kolaborasi || []).map(x => `<li>${hl(x)}</li>`).join('') || '<li>Kolaborasi dengan DPJP / tim multidisiplin jika perlu</li>'}</ul></div>
           </div>
         </div>
       `).join('');
@@ -666,13 +814,13 @@
           <div class="card-header">
             <div class="header-left">
               <div class="badge-row">
-                <span class="badge-code" style="font-size:12px; padding:3px 9px;">${item.kode_sdki}</span>
+                <span class="badge-code" style="font-size:12px; padding:3px 9px;">${hl(item.kode_sdki)}</span>
                 ${item.halaman_sdki ? `<span class="badge-code" style="font-size:11px; padding:3px 8px;">SDKI ${esc(item.halaman_sdki)}</span>` : ''}
                 ${badgeRsj}
                 ${badgeJenisDiag}
-                <span style="font-size:12px; color:var(--text-muted); font-weight:600;">${esc(item.kategori)} &rarr; ${esc(item.subkategori)}</span>
+                <span style="font-size:12px; color:var(--text-muted); font-weight:600;">${hl(item.kategori)} &rarr; ${hl(item.subkategori)}</span>
               </div>
-              <h2 class="diagnosis-headline">${esc(item.nama_diagnosis)}</h2>
+              <h2 class="diagnosis-headline">${hl(item.nama_diagnosis)}</h2>
               <div class="source-row">
                 <span>Validasi Portal Web:</span>
                 <a href="${item.url_sumber}" target="_blank" rel="noopener" class="ref-link">${ICONS.link} ${item.url_sumber}</a>
@@ -690,9 +838,9 @@
           ${statusBanner}
 
           <div class="tabs-nav">
-            <button class="tab-btn ${activeTab===0 ? 'active' : ''}" onclick="switchTab(0)">1. SDKI (Diagnosis)</button>
-            <button class="tab-btn ${activeTab===1 ? 'active' : ''}" onclick="switchTab(1)">2. SLKI (Luaran)</button>
-            <button class="tab-btn ${activeTab===2 ? 'active' : ''}" onclick="switchTab(2)">3. SIKI (Intervensi)</button>
+            <button class="tab-btn ${activeTab===0 ? 'active' : ''}" onclick="switchTab(0)">1. SDKI (Diagnosis)${tabHits[0] ? `<span class="tab-hit-badge">${tabHits[0]}</span>` : ''}</button>
+            <button class="tab-btn ${activeTab===1 ? 'active' : ''}" onclick="switchTab(1)">2. SLKI (Luaran)${tabHits[1] ? `<span class="tab-hit-badge">${tabHits[1]}</span>` : ''}</button>
+            <button class="tab-btn ${activeTab===2 ? 'active' : ''}" onclick="switchTab(2)">3. SIKI (Intervensi)${tabHits[2] ? `<span class="tab-hit-badge">${tabHits[2]}</span>` : ''}</button>
             <button class="tab-btn ${activeTab===3 ? 'active' : ''}" onclick="switchTab(3)">4. SOP & Simulasi CPPT</button>
             <button class="tab-btn ${activeTab===4 ? 'active' : ''}" onclick="switchTab(4)">5. Validasi & Sitasi</button>
           </div>
@@ -701,11 +849,11 @@
           <div class="tab-pane ${activeTab===0 ? 'active' : ''}">
             <div class="info-section">
               <h3>Definisi</h3>
-              <div class="info-box">${esc(item.definisi)}</div>
+              <div class="info-box">${hl(item.definisi)}</div>
             </div>
             <div class="info-section">
               <h3>Contoh Rumusan Penulisan Baku (${esc(item.jenis_diagnosis)})</h3>
-              <div class="info-box" style="border-left:4px solid var(--primary);">${buildFormulaPreview(item)}</div>
+              <div class="info-box" style="border-left:4px solid var(--primary);">${buildFormulaPreview(item, qRaw)}</div>
             </div>
             ${etiologiHtml}
             <div class="info-section">
@@ -713,20 +861,20 @@
               <div class="symptom-box">
                 <div class="symptom-col">
                   <div class="symptom-title">TANDA MAYOR (Wajib Validasi 80% - 100%)</div>
-                  <div><strong>Subjektif:</strong> ${renderWebSymptomField(item.gejala_mayor.subjektif, item.gejala_mayor.subjektif_list)}</div>
-                  <div style="margin-top:6px;"><strong>Objektif:</strong> ${renderWebSymptomField(item.gejala_mayor.objektif, item.gejala_mayor.objektif_list)}</div>
+                  <div><strong>Subjektif:</strong> ${renderWebSymptomField(item.gejala_mayor.subjektif, item.gejala_mayor.subjektif_list, qRaw)}</div>
+                  <div style="margin-top:6px;"><strong>Objektif:</strong> ${renderWebSymptomField(item.gejala_mayor.objektif, item.gejala_mayor.objektif_list, qRaw)}</div>
                 </div>
                 <div class="symptom-col">
                   <div class="symptom-title">TANDA MINOR (Pendukung / Opsional)</div>
-                  <div><strong>Subjektif:</strong> ${renderWebSymptomField(item.gejala_minor.subjektif, item.gejala_minor.subjektif_list)}</div>
-                  <div style="margin-top:6px;"><strong>Objektif:</strong> ${renderWebSymptomField(item.gejala_minor.objektif, item.gejala_minor.objektif_list)}</div>
+                  <div><strong>Subjektif:</strong> ${renderWebSymptomField(item.gejala_minor.subjektif, item.gejala_minor.subjektif_list, qRaw)}</div>
+                  <div style="margin-top:6px;"><strong>Objektif:</strong> ${renderWebSymptomField(item.gejala_minor.objektif, item.gejala_minor.objektif_list, qRaw)}</div>
                 </div>
               </div>
             </div>
             <div class="info-section">
               <h3>Kondisi Klinis Terkait</h3>
               <div class="tag-grid">
-                ${item.kondisi_klinis.map(k => `<span class="tag-chip">&bull; ${esc(k)}</span>`).join('')}
+                ${item.kondisi_klinis.map(k => `<span class="tag-chip">&bull; ${hl(k)}</span>`).join('')}
               </div>
             </div>
           </div>
@@ -736,9 +884,9 @@
             <div class="info-section">
               <h3>Luaran Utama & Ekspektasi</h3>
               <div class="info-box">
-                <strong>${esc(item.slki.luaran_utama)}</strong> ${item.slki.halaman_slki ? `<span class="badge-code">${esc(item.slki.halaman_slki)}</span>` : ''}
+                <strong>${hl(item.slki.luaran_utama)}</strong> ${item.slki.halaman_slki ? `<span class="badge-code">${esc(item.slki.halaman_slki)}</span>` : ''}
                 <div style="margin-top:4px;">Ekspektasi: <span class="badge-code" style="background:var(--primary); color:#fff;">${esc(item.slki.ekspektasi)}</span></div>
-                ${item.slki.definisi_slki ? `<p style="margin-top:6px; font-size:12px; color:var(--text-muted);">${esc(item.slki.definisi_slki)}</p>` : ''}
+                ${item.slki.definisi_slki ? `<p style="margin-top:6px; font-size:12px; color:var(--text-muted);">${hl(item.slki.definisi_slki)}</p>` : ''}
                 <p style="margin-top:6px; font-style:italic;">"${esc(item.slki.keterangan_tindakan)}"</p>
               </div>
             </div>
@@ -749,7 +897,7 @@
             <div class="info-section">
               <h3>Luaran Tambahan</h3>
               <div class="tag-grid">
-                ${item.slki.luaran_tambahan.map(l => `<span class="tag-chip">${esc(l)}</span>`).join('')}
+                ${item.slki.luaran_tambahan.map(l => `<span class="tag-chip">${hl(l)}</span>`).join('')}
               </div>
             </div>
           </div>
@@ -759,7 +907,7 @@
             <div class="info-section">
               <h3>Intervensi Utama</h3>
               <div class="tag-grid">
-                ${item.siki.intervensi_utama.map(i => `<span class="tag-chip" style="border-color:var(--primary); font-weight:600;">${esc(i)}</span>`).join('')}
+                ${item.siki.intervensi_utama.map(i => `<span class="tag-chip" style="border-color:var(--primary); font-weight:600;">${hl(i)}</span>`).join('')}
               </div>
             </div>
             <div class="info-section">
@@ -770,7 +918,7 @@
             <div class="info-section">
               <h3>Intervensi Pendukung</h3>
               <div class="tag-grid">
-                ${item.siki.intervensi_pendukung.map(i => `<span class="tag-chip">${esc(i)}</span>`).join('')}
+                ${item.siki.intervensi_pendukung.map(i => `<span class="tag-chip">${hl(i)}</span>`).join('')}
               </div>
             </div>` : ''}
           </div>
@@ -1032,12 +1180,12 @@ P: Lanjutkan intervensi SIKI ${item.siki.intervensi_utama[0] || ''} sesuai renca
       return splitSymptomOutsideParens(rawStr);
     }
 
-    function renderWebSymptomField(rawStr, listArr) {
+    function renderWebSymptomField(rawStr, listArr, q) {
       const items = resolveSymptomItems(rawStr, listArr);
       if (!items.length || isPlaceholderSymptom(rawStr)) {
-        return `<span style="color:var(--text-muted); font-style:italic;">${esc(rawStr || '(tidak tersedia)')}</span>`;
+        return `<span style="color:var(--text-muted); font-style:italic;">${hlText(rawStr || '(tidak tersedia)', q)}</span>`;
       }
-      return `<ul style="margin:3px 0 4px 18px; padding:0;">${items.map(x => `<li>${esc(x)}</li>`).join('')}</ul>`;
+      return `<ul style="margin:3px 0 4px 18px; padding:0;">${items.map(x => `<li>${hlText(x, q)}</li>`).join('')}</ul>`;
     }
 
     function renderPrintSymptomPoints(rawStr, listArr) {
@@ -1260,8 +1408,8 @@ P: Lanjutkan intervensi SIKI ${item.siki.intervensi_utama[0] || ''} sesuai renca
           <div class="rsj-docno-row">
             <div class="rsj-docno-box">${docNo ? esc(docNo) : '&nbsp;'}</div>
           </div>
-          <table class="rsj-table">
-            <thead>
+          <table class="rsj-kop-table">
+            <tbody>
               <tr>
                 <td class="rsj-kop-logo">${RSJ_LOGO ? `<img src="${RSJ_LOGO}" alt="Logo RSJ Lampung">` : 'LOGO'}</td>
                 <td class="rsj-kop-title" colspan="2">
@@ -1281,6 +1429,10 @@ P: Lanjutkan intervensi SIKI ${item.siki.intervensi_utama[0] || ''} sesuai renca
                   <small>(Dilengkapi setelah dilakukan asesment oleh perawat)</small>
                 </td>
               </tr>
+            </tbody>
+          </table>
+          <table class="rsj-table">
+            <thead>
               <tr>
                 <th class="rsj-col-head" colspan="2" rowspan="2" style="width:27%;">Dx Keperawatan<br>(SDKI) ${halSdki ? esc(halSdki) : ''}</th>
                 <th class="rsj-col-head" colspan="2">Perencanaan Keperawatan</th>
@@ -1299,6 +1451,14 @@ P: Lanjutkan intervensi SIKI ${item.siki.intervensi_utama[0] || ''} sesuai renca
                 <td class="rsj-ttd-cell">${ttdHtml}</td>
               </tr>
             </tbody>
+            <tfoot class="rsj-tfoot">
+              <tr>
+                <td class="rsj-foot-cell" colspan="2"></td>
+                <td class="rsj-foot-cell"></td>
+                <td class="rsj-foot-cell"></td>
+                <td class="rsj-foot-cell"></td>
+              </tr>
+            </tfoot>
           </table>
         </div>
       `;

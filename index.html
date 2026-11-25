@@ -78,6 +78,20 @@
     .dark .btn-rsj:hover { background: linear-gradient(135deg, #6d28d9, #4338ca); color: #fff; border-color: #8b5cf6; }
 
     .app-container { display: flex; flex: 1; overflow: hidden; }
+    footer.app-footer {
+      background: var(--card-bg);
+      border-top: 1px solid var(--border);
+      color: var(--text-muted);
+      padding: 7px 20px;
+      font-size: 11.5px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 8px;
+      flex-shrink: 0;
+    }
+    footer.app-footer strong { color: var(--text); font-weight: 700; }
 
     /* Sidebar */
     .sidebar { width: var(--sidebar-w); background: var(--card-bg); border-right: 1px solid var(--border); display: flex; flex-direction: column; flex-shrink: 0; }
@@ -277,6 +291,7 @@
     @media print {
       body { height: auto !important; overflow: visible !important; background: #fff !important; color: #000 !important; }
       body.print-web header,
+      body.print-web footer.app-footer,
       body.print-web .sidebar,
       body.print-web .btn,
       body.print-web .tabs-nav,
@@ -395,6 +410,12 @@
 
     <div class="detail-view" id="detailView"></div>
   </div>
+
+  <!-- Footer -->
+  <footer class="app-footer">
+    <span>Standar Asuhan Keperawatan 3S PPNI (SDKI &bull; SLKI &bull; SIKI) &mdash; RS Jiwa Daerah Provinsi Lampung</span>
+    <span>Pengembang Web: <strong>Rakhmat Dedi G</strong> &copy; 2026</span>
+  </footer>
 
   <!-- SOP Modal -->
   <div class="modal-backdrop" id="sopModal" onclick="closeModal('sopModal', event)">

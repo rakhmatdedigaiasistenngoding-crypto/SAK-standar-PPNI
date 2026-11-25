@@ -82,6 +82,7 @@
     .btn-feedback { background: linear-gradient(135deg, #ea580c, #d97706); color: #fff; border-color: #d97706; }
     .btn-feedback:hover { background: linear-gradient(135deg, #c2410c, #b45309); color: #fff; border-color: #b45309; }
     .btn-feedback.active-mode { box-shadow: 0 0 0 3px rgba(234, 88, 12, 0.30); }
+    .online-hidden { display: none !important; }
 
     /* Feedback / Forum Perawat */
     .fb-iframe-wrap { background: #fff; border: 1px solid var(--border); border-radius: 10px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
@@ -609,6 +610,21 @@
       return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
     }
 
+    function isOnlineDeployment(locObj) {
+      try {
+        const loc = locObj || (typeof window !== 'undefined' ? window.location : null);
+        if (!loc) return false;
+        const proto = String(loc.protocol || '').toLowerCase();
+        const host = String(loc.hostname || '').toLowerCase();
+        if (proto === 'file:' || !host || host === 'localhost' || host === '127.0.0.1' || host.endsWith('.local')) {
+          return false; // Versi offline / lokal
+        }
+        return true; // Versi online (mis. github.io)
+      } catch (e) {
+        return false;
+      }
+    }
+
     function getQuery() {
       const el = document.getElementById('searchInput');
       return el ? el.value.trim() : '';
@@ -949,8 +965,8 @@
               </div>
             </div>
             <div class="header-right">
-              <button class="btn" onclick="copySoap('${item.kode_sdki}')">${ICONS.copy} Salin CPPT (SOAP)</button>
-              <button class="btn" onclick="printWebFormat()">${ICONS.print} Cetak Format Web</button>
+              <button class="btn ${isOnlineDeployment() ? 'online-hidden' : ''}" id="btnCopySoapDiag" onclick="copySoap('${item.kode_sdki}')">${ICONS.copy} Salin CPPT (SOAP)</button>
+              <button class="btn ${isOnlineDeployment() ? 'online-hidden' : ''}" id="btnPrintWebDiag" onclick="printWebFormat()">${ICONS.print} Cetak Format Web</button>
               <button class="btn btn-rsj" onclick="openRsjPrintModal('${item.kode_sdki}')">${ICONS.doc} Cetak Dokumen RSJ (Kop & TTD)</button>
             </div>
           </div>
@@ -3250,6 +3266,7 @@ Status Verifikasi: ${verifLine}`;
               ${statusBadge}
             </div>
             <div style="white-space:pre-wrap; overflow-wrap:anywhere;">${esc(it.komentar || '-')}</div>
+            ${(it.lampiran && /^https?:\/\//i.test(String(it.lampiran).trim())) ? `<div style="margin-top:6px;"><a class="web-link" href="${esc(String(it.lampiran).trim())}" target="_blank" rel="noopener">Lihat Lampiran Screenshot Website &rarr;</a></div>` : ''}
             ${replyBlock}
           </div>
         `;
@@ -3264,20 +3281,21 @@ Status Verifikasi: ${verifLine}`;
       ];
 
       let bodyHtml = '';
+      const isOnline = isOnlineDeployment();
       if (feedbackActiveTab === 0) {
         bodyHtml = `
           <div class="notice-banner notice-warn" style="margin-bottom:12px;">
             ${ICONS.warn}
             <div>
-              <strong>Peringatan Privasi Rekam Medis:</strong> Formulir ini bersifat <strong>terbuka untuk pengembangan &amp; edukasi</strong>. <strong>DILARANG</strong> menulis Nama Asli Pasien, Nomor Rekam Medis (NRM), NIK, atau identitas pasien pada kotak pesan.
+              <strong>Peringatan Privasi &amp; Ketentuan Lampiran Gambar:</strong> Formulir ini khusus untuk pengembangan &amp; edukasi aplikasi 3S. Lampiran foto/screenshot (opsional) <strong>HANYA untuk gambar tampilan website ini</strong>. <strong>DILARANG</strong> menyertakan Nama Asli Pasien, Nomor Rekam Medis (NRM), NIK, maupun screenshot dari sistem SIMRS rumah sakit.
             </div>
           </div>
           <div class="fb-toolbar">
-            <div style="font-size:12.5px; color:var(--text-muted);">
-              Pesan masuk langsung ke Google Sheet pengembang. Setelah ditinjau &amp; dibalas, hasilnya tampil di <strong>Tab 2 (Daftar Pesan &amp; Tanggapan)</strong>.
+            <div style="font-size:12.5px; color:var(--text-muted); max-width:640px;">
+              Pesan masuk ke Google Sheet pengembang lalu balasannya tampil di <strong>Tab 2</strong>. Jika Google Form mengaktifkan fitur <em>Upload Foto</em>, kotak sematan di bawah akan meminta dibuka di tab baru agar dapat login akun Google.
             </div>
             <div style="display:flex; gap:8px; flex-wrap:wrap;">
-              <a class="btn btn-feedback" href="${esc(FEEDBACK_FORM_URL)}" target="_blank" rel="noopener">Buka Form di Tab Baru &rarr;</a>
+              <a class="btn btn-feedback" href="${esc(FEEDBACK_FORM_URL)}" target="_blank" rel="noopener">Buka Google Form (Mendukung Upload Foto) &rarr;</a>
               <button class="btn" onclick="switchFeedbackTab(1)">Lihat Daftar Tanggapan${countTxt}</button>
             </div>
           </div>
@@ -3287,7 +3305,7 @@ Status Verifikasi: ${verifLine}`;
         `;
       } else {
         const jenisList = ['ALL', 'Tanya', 'Masukan', 'Koreksi', 'Lainnya'];
-        const rawJsonHtml = feedbackState.showRawJson
+        const rawJsonHtml = (!isOnline && feedbackState.showRawJson)
           ? `<pre class="fb-json-pre">${esc(JSON.stringify({ status: 'ok', total: feedbackState.items.length, items: feedbackState.items }, null, 2))}</pre>`
           : '';
         bodyHtml = `
@@ -3298,7 +3316,7 @@ Status Verifikasi: ${verifLine}`;
             <div style="display:flex; flex-wrap:wrap; gap:6px; align-items:center;">
               <input type="text" class="builder-input" style="width:210px; padding:5px 9px;" value="${esc(feedbackState.search)}" placeholder="Cari pesan / kode SDKI..." oninput="onFeedbackSearch(this.value)">
               <button class="btn btn-primary" style="font-size:11.5px; padding:5px 10px;" onclick="fetchFeedbackJson(true)">Refresh Daftar Pesan</button>
-              <button class="btn" style="font-size:11.5px; padding:5px 10px;" onclick="toggleFeedbackRawJson()">${feedbackState.showRawJson ? 'Tutup JSON' : 'Lihat JSON'}</button>
+              <button class="btn ${isOnline ? 'online-hidden' : ''}" id="btnToggleRawJson" style="font-size:11.5px; padding:5px 10px;" onclick="toggleFeedbackRawJson()">${feedbackState.showRawJson ? 'Tutup JSON' : 'Lihat JSON'}</button>
             </div>
           </div>
           <div id="fbListContainer">${buildFeedbackListHtml()}</div>

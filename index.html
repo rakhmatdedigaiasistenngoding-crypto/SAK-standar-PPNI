@@ -3297,7 +3297,7 @@ Status Verifikasi: ${verifLine}`;
             </div>
             <div style="display:flex; flex-wrap:wrap; gap:6px; align-items:center;">
               <input type="text" class="builder-input" style="width:210px; padding:5px 9px;" value="${esc(feedbackState.search)}" placeholder="Cari pesan / kode SDKI..." oninput="onFeedbackSearch(this.value)">
-              <button class="btn btn-primary" style="font-size:11.5px; padding:5px 10px;" onclick="fetchFeedbackJson(true)">Muat Ulang JSON</button>
+              <button class="btn btn-primary" style="font-size:11.5px; padding:5px 10px;" onclick="fetchFeedbackJson(true)">Refresh Daftar Pesan</button>
               <button class="btn" style="font-size:11.5px; padding:5px 10px;" onclick="toggleFeedbackRawJson()">${feedbackState.showRawJson ? 'Tutup JSON' : 'Lihat JSON'}</button>
             </div>
           </div>

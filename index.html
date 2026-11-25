@@ -79,6 +79,28 @@
     .btn-cppt { background: linear-gradient(135deg, #0d9488, #0f766e); color: #fff; border-color: #0f766e; }
     .btn-cppt:hover { background: linear-gradient(135deg, #0f766e, #115e59); color: #fff; border-color: #115e59; }
     .btn-cppt.active-mode { box-shadow: 0 0 0 3px rgba(13, 148, 136, 0.30); }
+    .btn-feedback { background: linear-gradient(135deg, #ea580c, #d97706); color: #fff; border-color: #d97706; }
+    .btn-feedback:hover { background: linear-gradient(135deg, #c2410c, #b45309); color: #fff; border-color: #b45309; }
+    .btn-feedback.active-mode { box-shadow: 0 0 0 3px rgba(234, 88, 12, 0.30); }
+
+    /* Feedback / Forum Perawat */
+    .fb-iframe-wrap { background: #fff; border: 1px solid var(--border); border-radius: 10px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+    .fb-toolbar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 12px; }
+    .fb-msg-list { display: flex; flex-direction: column; gap: 11px; }
+    .fb-msg-card { background: var(--bg); border: 1px solid var(--border); border-left: 4px solid #ea580c; border-radius: 9px; padding: 13px 15px; font-size: 13px; line-height: 1.55; }
+    .fb-msg-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-bottom: 7px; font-size: 11.5px; color: var(--text-muted); }
+    .fb-jenis { font-size: 10.5px; font-weight: 800; padding: 2px 8px; border-radius: 99px; border: 1px solid; }
+    .fb-jenis.tanya { background: #eff6ff; color: #1d4ed8; border-color: #bfdbfe; }
+    .fb-jenis.masukan { background: #ecfdf5; color: #047857; border-color: #a7f3d0; }
+    .fb-jenis.koreksi { background: #fef2f2; color: #b91c1c; border-color: #fecaca; }
+    .fb-jenis.lainnya { background: #f1f5f9; color: #334155; border-color: #cbd5e1; }
+    .dark .fb-jenis.tanya { background: rgba(37,99,235,0.2); color: #93c5fd; border-color: #1e40af; }
+    .dark .fb-jenis.masukan { background: rgba(5,150,105,0.2); color: #6ee7b7; border-color: #065f46; }
+    .dark .fb-jenis.koreksi { background: rgba(220,38,38,0.2); color: #fca5a5; border-color: #7f1d1d; }
+    .dark .fb-jenis.lainnya { background: rgba(100,116,139,0.25); color: #cbd5e1; border-color: #475569; }
+    .fb-reply-box { margin-top: 9px; padding: 9px 12px; background: var(--ok-bg); border: 1px solid var(--ok-border); border-radius: 7px; color: var(--ok-text); font-size: 12.5px; }
+    .fb-reply-empty { margin-top: 8px; font-size: 12px; color: var(--text-muted); font-style: italic; }
+    .fb-json-pre { font-family: Consolas, monospace; font-size: 11.5px; background: var(--card-bg); border: 1px solid var(--border); border-radius: 7px; padding: 10px 12px; max-height: 260px; overflow: auto; white-space: pre-wrap; margin-top: 10px; }
 
     /* CPPT + SAK Guide & Simulator */
     .cppt-tabs { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 14px; border-bottom: 2px solid var(--border); padding-bottom: 10px; }
@@ -409,6 +431,10 @@
         <svg class="svg-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
         SOP Praktik Lapangan
       </button>
+      <button class="btn btn-feedback" id="btnFeedbackMode" onclick="toggleFeedbackCenter()">
+        <svg class="svg-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+        Masukan &amp; Diskusi
+      </button>
       <button class="btn" onclick="toggleTheme()" id="themeBtn">
         <svg class="svg-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
         Mode Gelap
@@ -575,6 +601,8 @@
     let learningMode = false;
     let cpptMode = false;
     let cpptActiveTab = 0;
+    let feedbackMode = false;
+    let feedbackActiveTab = 0;
 
     function esc(s) {
       if (s === null || s === undefined) return '';
@@ -673,7 +701,7 @@
 
     function onSearchInput() {
       renderList();
-      if (!learningMode && !cpptMode) renderDetail();
+      if (!learningMode && !cpptMode && !feedbackMode) renderDetail();
     }
 
     function toggleTheme() {
@@ -718,7 +746,7 @@
       }
 
       listEl.innerHTML = filtered.map(item => {
-        const isActive = item.kode_sdki === selectedKode && !learningMode && !cpptMode;
+        const isActive = item.kode_sdki === selectedKode && !learningMode && !cpptMode && !feedbackMode;
         const jBadge = item.jenis_rsj === 'JIWA' ? '<span class="badge-jiwa">JIWA</span>' : '<span class="badge-fisik">NON-JIWA</span>';
         const vBadge = item.sumber_data === 'TAKSONOMI_RINGKAS'
           ? '<span class="badge-ringkas">Ringkas</span>'
@@ -742,9 +770,12 @@
     function selectDiagnosis(kode) {
       learningMode = false;
       cpptMode = false;
+      feedbackMode = false;
       document.getElementById('btnLearnMode').classList.remove('active-mode');
       const cpptBtn = document.getElementById('btnCpptMode');
       if (cpptBtn) cpptBtn.classList.remove('active-mode');
+      const fbBtn = document.getElementById('btnFeedbackMode');
+      if (fbBtn) fbBtn.classList.remove('active-mode');
       selectedKode = kode;
       const qRaw = getQuery();
       const item = DATA.find(x => x.kode_sdki === kode);
@@ -774,8 +805,11 @@
 
     function toggleLearningCenter() {
       cpptMode = false;
+      feedbackMode = false;
       const cpptBtn = document.getElementById('btnCpptMode');
       if (cpptBtn) cpptBtn.classList.remove('active-mode');
+      const fbBtn = document.getElementById('btnFeedbackMode');
+      if (fbBtn) fbBtn.classList.remove('active-mode');
       learningMode = !learningMode;
       document.getElementById('btnLearnMode').classList.toggle('active-mode', learningMode);
       renderList();
@@ -2689,8 +2723,11 @@ Status Verifikasi: ${verifLine}`;
 
     function toggleCpptGuide() {
       learningMode = false;
+      feedbackMode = false;
       const learnBtn = document.getElementById('btnLearnMode');
       if (learnBtn) learnBtn.classList.remove('active-mode');
+      const fbBtn = document.getElementById('btnFeedbackMode');
+      if (fbBtn) fbBtn.classList.remove('active-mode');
       cpptMode = !cpptMode;
       const cpptBtn = document.getElementById('btnCpptMode');
       if (cpptBtn) cpptBtn.classList.toggle('active-mode', cpptMode);
@@ -3050,6 +3087,248 @@ Status Verifikasi: ${verifLine}`;
       if (cpptActiveTab === 2) {
         refreshCpptLiveOutputs();
       }
+    }
+
+    // =========================================================================
+    // MODUL MASUKAN, KOREKSI & DISKUSI PERAWAT (GOOGLE FORM + APPS SCRIPT JSON)
+    // =========================================================================
+    const FEEDBACK_FORM_URL = 'https://docs.google.com/forms/d/e/1FAIpQLScx56IwZ6zsDdXZIKaOMZogtcMV81g8scpQfNVfV74JMphCuA/viewform';
+    const FEEDBACK_FORM_EMBED_URL = FEEDBACK_FORM_URL + '?embedded=true';
+    const FEEDBACK_API_URL = 'https://script.google.com/macros/s/AKfycbzw-ER4MLdwa7DdHyGhyCIJ0wDCmw9rcZNs6rtpykfyQDNc7uhbp3RpFda5ZHxptBMt/exec';
+
+    let feedbackState = {
+      items: [],
+      loaded: false,
+      loading: false,
+      error: '',
+      filterJenis: 'ALL',
+      search: '',
+      showRawJson: false
+    };
+
+    function getJenisClass(jenis) {
+      const s = String(jenis || '').toLowerCase();
+      if (s.includes('tanya')) return 'tanya';
+      if (s.includes('masukan') || s.includes('saran')) return 'masukan';
+      if (s.includes('koreksi')) return 'koreksi';
+      return 'lainnya';
+    }
+
+    function extractSdkiCode(str) {
+      if (!str) return '';
+      const m = String(str).toUpperCase().match(/\b([A-Z]\.\d{4})\b/);
+      if (!m) return '';
+      return DATA.some(d => d.kode_sdki === m[1]) ? m[1] : '';
+    }
+
+    function filterFeedbackItems(items, filterJenis, queryStr) {
+      const q = (queryStr || '').trim().toLowerCase();
+      return (items || []).filter(it => {
+        if (filterJenis && filterJenis !== 'ALL') {
+          if (String(it.jenis || '').toLowerCase() !== filterJenis.toLowerCase()) return false;
+        }
+        if (q) {
+          const hay = [it.nama, it.unit, it.jenis, it.kode_sdki, it.komentar, it.tanggapan, it.status].join(' ').toLowerCase();
+          if (!hay.includes(q)) return false;
+        }
+        return true;
+      });
+    }
+
+    async function fetchFeedbackJson(forceRefresh) {
+      if (feedbackState.loading) return;
+      if (feedbackState.loaded && !forceRefresh) return;
+      feedbackState.loading = true;
+      feedbackState.error = '';
+      if (feedbackMode && feedbackActiveTab === 1) renderFeedbackCenter();
+
+      try {
+        const url = FEEDBACK_API_URL + (FEEDBACK_API_URL.includes('?') ? '&' : '?') + '_t=' + Date.now();
+        const res = await fetch(url, { method: 'GET', cache: 'no-store' });
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        const json = await res.json();
+        if (json && json.status === 'ok' && Array.isArray(json.items)) {
+          feedbackState.items = json.items;
+          feedbackState.loaded = true;
+        } else {
+          throw new Error((json && json.message) ? json.message : 'Format JSON tidak dikenali');
+        }
+      } catch (err) {
+        feedbackState.error = 'Gagal memuat data JSON dari Google Apps Script (' + (err && err.message ? err.message : 'Network error') + '). Pastikan koneksi internet aktif dan Deployment Apps Script disetel "Who has access: Anyone".';
+      } finally {
+        feedbackState.loading = false;
+        if (feedbackMode) renderFeedbackCenter();
+      }
+    }
+
+    function switchFeedbackTab(idx) {
+      feedbackActiveTab = idx;
+      renderFeedbackCenter();
+      if (idx === 1 && !feedbackState.loaded && !feedbackState.loading) {
+        fetchFeedbackJson(true);
+      }
+    }
+
+    function toggleFeedbackCenter() {
+      learningMode = false;
+      cpptMode = false;
+      const learnBtn = document.getElementById('btnLearnMode');
+      if (learnBtn) learnBtn.classList.remove('active-mode');
+      const cpptBtn = document.getElementById('btnCpptMode');
+      if (cpptBtn) cpptBtn.classList.remove('active-mode');
+
+      feedbackMode = !feedbackMode;
+      const fbBtn = document.getElementById('btnFeedbackMode');
+      if (fbBtn) fbBtn.classList.toggle('active-mode', feedbackMode);
+      renderList();
+
+      if (feedbackMode) {
+        renderFeedbackCenter();
+        if (!feedbackState.loaded && !feedbackState.loading) {
+          fetchFeedbackJson(false);
+        }
+      } else {
+        renderDetail();
+      }
+    }
+
+    function setFeedbackFilter(jenis) {
+      feedbackState.filterJenis = jenis;
+      renderFeedbackCenter();
+    }
+
+    function onFeedbackSearch(val) {
+      feedbackState.search = val;
+      const listEl = document.getElementById('fbListContainer');
+      if (listEl) {
+        listEl.innerHTML = buildFeedbackListHtml();
+      }
+    }
+
+    function toggleFeedbackRawJson() {
+      feedbackState.showRawJson = !feedbackState.showRawJson;
+      renderFeedbackCenter();
+    }
+
+    function buildFeedbackListHtml() {
+      if (feedbackState.loading) {
+        return '<div class="cppt-card" style="text-align:center; padding:24px;">Memuat data pertanyaan &amp; tanggapan JSON dari Google Sheets...</div>';
+      }
+      if (feedbackState.error) {
+        return `<div class="notice-banner notice-warn">${ICONS.warn}<div><strong>Kendala Sinkronisasi:</strong> ${esc(feedbackState.error)}</div></div>`;
+      }
+      const filtered = filterFeedbackItems(feedbackState.items, feedbackState.filterJenis, feedbackState.search);
+      if (!feedbackState.items.length) {
+        return `<div class="cppt-card" style="border-left:4px solid #0284c7;">
+          <h4>Belum Ada Pesan yang Ditayangkan</h4>
+          <p>Belum ada kiriman yang ditandai <code>Tampilkan di Web = Ya</code> pada Google Sheets pengembang. Silakan kirim masukan/pertanyaan baru pada tab <strong>Kirim Masukan</strong>, lalu setelah pengembang membalas &amp; menandai <code>Ya</code> di Spreadsheet, daftar tanya-jawab otomatis tampil di sini.</p>
+        </div>`;
+      }
+      if (!filtered.length) {
+        return '<div class="cppt-card">Tidak ada pesan yang cocok dengan filter atau kata kunci Anda.</div>';
+      }
+      return `<div class="fb-msg-list">` + filtered.map(it => {
+        const jCls = getJenisClass(it.jenis);
+        const linkedKode = extractSdkiCode(it.kode_sdki);
+        const sdkiBadge = it.kode_sdki
+          ? (linkedKode
+              ? `<button class="badge-code" style="cursor:pointer; border:1px solid var(--primary);" onclick="selectDiagnosis('${esc(linkedKode)}')" title="Klik untuk membuka ${esc(linkedKode)}">${esc(it.kode_sdki)} &rarr;</button>`
+              : `<span class="badge-code">${esc(it.kode_sdki)}</span>`)
+          : '';
+        const statusBadge = it.status ? `<span class="badge-verif">${esc(it.status)}</span>` : '';
+        const replyBlock = (it.tanggapan && it.tanggapan.trim())
+          ? `<div class="fb-reply-box"><strong>Tanggapan Pengembang (Rakhmat Dedi G):</strong><br>${esc(it.tanggapan).replace(/\n/g, '<br>')}</div>`
+          : `<div class="fb-reply-empty">Belum ada tanggapan tertulis dari pengembang.</div>`;
+        return `
+          <div class="fb-msg-card">
+            <div class="fb-msg-meta">
+              <span class="fb-jenis ${jCls}">${esc(it.jenis || 'Lainnya')}</span>
+              <strong>${esc(it.nama || '-')}</strong>
+              <span>&bull; ${esc(it.unit || '-')}</span>
+              <span>&bull; ${esc(it.tanggal || '-')}</span>
+              ${sdkiBadge}
+              ${statusBadge}
+            </div>
+            <div style="white-space:pre-wrap; overflow-wrap:anywhere;">${esc(it.komentar || '-')}</div>
+            ${replyBlock}
+          </div>
+        `;
+      }).join('') + `</div>`;
+    }
+
+    function renderFeedbackCenter() {
+      const countTxt = feedbackState.loaded ? ` (${feedbackState.items.length})` : '';
+      const tabs = [
+        '1. Kirim Masukan / Tanya / Koreksi',
+        '2. Daftar Pesan & Tanggapan' + countTxt
+      ];
+
+      let bodyHtml = '';
+      if (feedbackActiveTab === 0) {
+        bodyHtml = `
+          <div class="notice-banner notice-warn" style="margin-bottom:12px;">
+            ${ICONS.warn}
+            <div>
+              <strong>Peringatan Privasi Rekam Medis:</strong> Formulir ini bersifat <strong>terbuka untuk pengembangan &amp; edukasi</strong>. <strong>DILARANG</strong> menulis Nama Asli Pasien, Nomor Rekam Medis (NRM), NIK, atau identitas pasien pada kotak pesan.
+            </div>
+          </div>
+          <div class="fb-toolbar">
+            <div style="font-size:12.5px; color:var(--text-muted);">
+              Pesan masuk langsung ke Google Sheet pengembang. Setelah ditinjau &amp; dibalas, hasilnya tampil di <strong>Tab 2 (Daftar Pesan &amp; Tanggapan)</strong>.
+            </div>
+            <div style="display:flex; gap:8px; flex-wrap:wrap;">
+              <a class="btn btn-feedback" href="${esc(FEEDBACK_FORM_URL)}" target="_blank" rel="noopener">Buka Form di Tab Baru &rarr;</a>
+              <button class="btn" onclick="switchFeedbackTab(1)">Lihat Daftar Tanggapan${countTxt}</button>
+            </div>
+          </div>
+          <div class="fb-iframe-wrap">
+            <iframe src="${esc(FEEDBACK_FORM_EMBED_URL)}" width="100%" height="780" frameborder="0" marginheight="0" marginwidth="0" style="display:block;">Memuat Google Form...</iframe>
+          </div>
+        `;
+      } else {
+        const jenisList = ['ALL', 'Tanya', 'Masukan', 'Koreksi', 'Lainnya'];
+        const rawJsonHtml = feedbackState.showRawJson
+          ? `<pre class="fb-json-pre">${esc(JSON.stringify({ status: 'ok', total: feedbackState.items.length, items: feedbackState.items }, null, 2))}</pre>`
+          : '';
+        bodyHtml = `
+          <div class="fb-toolbar">
+            <div style="display:flex; flex-wrap:wrap; gap:5px; align-items:center;">
+              ${jenisList.map(j => `<button class="pill-btn ${feedbackState.filterJenis === j ? 'active' : ''}" style="flex:0 0 auto; padding:5px 10px;" onclick="setFeedbackFilter('${j}')">${j === 'ALL' ? 'Semua' : j}</button>`).join('')}
+            </div>
+            <div style="display:flex; flex-wrap:wrap; gap:6px; align-items:center;">
+              <input type="text" class="builder-input" style="width:210px; padding:5px 9px;" value="${esc(feedbackState.search)}" placeholder="Cari pesan / kode SDKI..." oninput="onFeedbackSearch(this.value)">
+              <button class="btn btn-primary" style="font-size:11.5px; padding:5px 10px;" onclick="fetchFeedbackJson(true)">Muat Ulang JSON</button>
+              <button class="btn" style="font-size:11.5px; padding:5px 10px;" onclick="toggleFeedbackRawJson()">${feedbackState.showRawJson ? 'Tutup JSON' : 'Lihat JSON'}</button>
+            </div>
+          </div>
+          <div id="fbListContainer">${buildFeedbackListHtml()}</div>
+          ${rawJsonHtml}
+        `;
+      }
+
+      const html = `
+        <div class="detail-card">
+          <div class="card-header">
+            <div class="header-left">
+              <div class="badge-row">
+                <span class="badge-code" style="background:#ea580c; color:#fff;">FORUM MASUKAN &amp; KOREKSI PERAWAT</span>
+                <span class="badge-verif">Google Form + JSON Feed Real-Time</span>
+              </div>
+              <h2 class="diagnosis-headline">Kotak Masukan, Tanya-Jawab &amp; Koreksi Standar 3S</h2>
+              <p style="font-size:13px; color:var(--text-muted); margin-top:4px;">Saluran komunikasi langsung antara perawat pengguna lapangan dengan pengembang (Rakhmat Dedi G) untuk perbaikan konten SDKI, SLKI, SIKI, maupun fitur CPPT.</p>
+            </div>
+            <div class="action-buttons">
+              <button class="btn" onclick="toggleFeedbackCenter()">&larr; Kembali ke Diagnosis 3S</button>
+            </div>
+          </div>
+
+          <div class="cppt-tabs">
+            ${tabs.map((t, idx) => `<button class="cppt-tab-btn ${feedbackActiveTab === idx ? 'active' : ''}" onclick="switchFeedbackTab(${idx})">${esc(t)}</button>`).join('')}
+          </div>
+          ${bodyHtml}
+        </div>
+      `;
+      document.getElementById('detailView').innerHTML = html;
     }
 
     // Initialize

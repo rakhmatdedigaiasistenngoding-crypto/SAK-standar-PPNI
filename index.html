@@ -231,6 +231,15 @@
     .diag-item:hover { background: var(--bg); }
     .diag-item.active { background: var(--bg); border-color: var(--primary); box-shadow: inset 3px 0 0 var(--primary); }
     .diag-item-header { display: flex; align-items: center; justify-content: space-between; gap: 4px; margin-bottom: 3px; }
+    .ringkas-toggle-bar { margin-top: 7px; padding: 6px 8px; border-radius: 6px; background: var(--bg); border: 1px dashed var(--border); display: flex; align-items: center; justify-content: space-between; gap: 6px; font-size: 11px; color: var(--text-muted); }
+    .ringkas-toggle-lbl { display: flex; align-items: center; gap: 6px; cursor: pointer; font-weight: 600; color: var(--text); flex: 1; }
+    .ringkas-toggle-lbl input { accent-color: var(--primary); cursor: pointer; }
+    .ringkas-state-pill { font-size: 9.5px; font-weight: 700; padding: 2px 6px; border-radius: 999px; background: var(--warn-bg); color: var(--warn-text); border: 1px solid var(--warn-border); white-space: nowrap; }
+    .ringkas-state-pill.is-off { background: var(--border); color: var(--text-muted); border-color: transparent; }
+    .diag-section-divider { margin: 10px 2px 6px; padding: 5px 8px; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: var(--warn-text); background: var(--warn-bg); border: 1px dashed var(--warn-border); border-radius: 6px; display: flex; align-items: center; justify-content: space-between; gap: 4px; }
+    .diag-item.is-ringkas { opacity: 0.78; background: rgba(148,163,184,0.06); border-left: 2px dashed var(--warn-border); padding: 7px 10px; }
+    .diag-item.is-ringkas:hover { opacity: 1; background: var(--bg); }
+    .diag-item.is-ringkas.active { opacity: 1; border-left: 3px solid var(--primary); }
     .badge-group { display: flex; align-items: center; gap: 4px; }
     .badge-code { font-size: 10px; font-weight: 700; padding: 2px 6px; border-radius: 4px; background: var(--border); color: var(--text); }
     .badge-jiwa { font-size: 9.5px; font-weight: 700; padding: 2px 6px; border-radius: 4px; background: var(--jiwa-bg); color: var(--jiwa); border: 1px solid var(--jiwa-border); }
@@ -515,11 +524,11 @@
           <button class="pill-btn active" id="pillAll" onclick="setFilter('ALL')">Semua (149)</button>
           <button class="pill-btn" id="pillJiwa" onclick="setFilter('JIWA')">
             <svg class="svg-ic-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9.5 2A2.5 2.5 0 0 1 12 4.5v15a2.5 2.5 0 0 1-4.96.44 2.5 2.5 0 0 1-2.96-3.08 3 3 0 0 1-.34-5.58 2.5 2.5 0 0 1 1.32-4.24 2.5 2.5 0 0 1 1.98-3A2.5 2.5 0 0 1 9.5 2Z"/><path d="M14.5 2A2.5 2.5 0 0 0 12 4.5v15a2.5 2.5 0 0 0 4.96.44 2.5 2.5 0 0 0 2.96-3.08 3 3 0 0 0 .34-5.58 2.5 2.5 0 0 0-1.32-4.24 2.5 2.5 0 0 0-1.98-3A2.5 2.5 0 0 0 14.5 2Z"/></svg>
-            Jiwa (41)
+            <span id="pillJiwaText">Jiwa (41)</span>
           </button>
           <button class="pill-btn" id="pillFisik" onclick="setFilter('NON-JIWA')">
             <svg class="svg-ic-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4.8 2.3A.3.3 0 1 0 5 2H4a2 2 0 0 0-2 2v5a6 6 0 0 0 6 6v0a6 6 0 0 0 6-6V4a2 2 0 0 0-2-2h-1a.2.2 0 1 0 .3.3"/><path d="M8 15v1a6 6 0 0 0 6 6v0a6 6 0 0 0 6-6v-4"/><circle cx="20" cy="10" r="2"/></svg>
-            Fisik (108)
+            <span id="pillFisikText">Fisik (108)</span>
           </button>
         </div>
         <div class="filter-row2">
@@ -540,11 +549,18 @@
             <option value="Interaksi Sosial">Interaksi Sosial (11)</option>
             <option value="Keamanan dan Proteksi">Keamanan & Proteksi (21)</option>
           </select>
-          <select id="statusSelect" class="subcat-select" onchange="renderList()">
+          <select id="statusSelect" class="subcat-select" onchange="onStatusSelectChange(this.value)">
             <option value="">-- Semua Status Data --</option>
             <option value="VERIFIED">Terverifikasi RSJ/PPNI (34)</option>
             <option value="TAKSONOMI_RINGKAS">Ringkasan Taksonomi (115)</option>
           </select>
+        </div>
+        <div class="ringkas-toggle-bar" id="ringkasToggleBar">
+          <label class="ringkas-toggle-lbl" title="Saat nonaktif, daftar mengutamakan 34 SAK lengkap terverifikasi; aktifkan untuk menampilkan 115 indeks Taksonomi Ringkas di bawahnya">
+            <input type="checkbox" id="chkShowRingkas" onchange="toggleShowRingkas(this.checked)">
+            <span>Tampilkan SAK Ringkas (115)</span>
+          </label>
+          <span class="ringkas-state-pill" id="ringkasStatePill">Nonaktif</span>
         </div>
       </div>
 
@@ -667,6 +683,7 @@
     let feedbackActiveTab = 0;
     let auditMode = false;
     let auditActiveTab = 0;
+    let showRingkas = !isOnlineDeployment(); // Online: default sembunyikan Ringkas (utamakan 34 Lengkap); Offline: tampil di bawah Lengkap
 
     function esc(s) {
       if (s === null || s === undefined) return '';
@@ -800,14 +817,97 @@
       renderList();
     }
 
+    function syncEnvironmentVisibility() {
+      const isOnline = isOnlineDeployment();
+      const auBtn = document.getElementById('btnAuditMode');
+      if (auBtn) auBtn.classList.toggle('online-hidden', isOnline);
+      if (isOnline && auditMode) {
+        auditMode = false;
+        if (auBtn) auBtn.classList.remove('active-mode');
+      }
+      showRingkas = !isOnline;
+      updateSidebarFilterCounters();
+    }
+
+    function updateSidebarFilterCounters() {
+      const pool = showRingkas ? DATA : DATA.filter(d => d.sumber_data !== 'TAKSONOMI_RINGKAS');
+      const totalCnt = pool.length;
+      const jiwaCnt = pool.filter(d => d.jenis_rsj === 'JIWA').length;
+      const fisikCnt = pool.filter(d => d.jenis_rsj === 'NON-JIWA').length;
+
+      const pillAll = document.getElementById('pillAll');
+      if (pillAll) pillAll.textContent = 'Semua (' + totalCnt + ')';
+      const pillJiwaTxt = document.getElementById('pillJiwaText');
+      if (pillJiwaTxt) pillJiwaTxt.textContent = 'Jiwa (' + jiwaCnt + ')';
+      const pillFisikTxt = document.getElementById('pillFisikText');
+      if (pillFisikTxt) pillFisikTxt.textContent = 'Fisik (' + fisikCnt + ')';
+
+      const chk = document.getElementById('chkShowRingkas');
+      if (chk) chk.checked = showRingkas;
+      const statePill = document.getElementById('ringkasStatePill');
+      if (statePill) {
+        statePill.textContent = showRingkas ? 'Aktif (Di Bawah Lengkap)' : 'Nonaktif (Fokus Lengkap)';
+        statePill.classList.toggle('is-off', !showRingkas);
+      }
+    }
+
+    function toggleShowRingkas(checked) {
+      showRingkas = Boolean(checked);
+      if (!showRingkas) {
+        const stEl = document.getElementById('statusSelect');
+        if (stEl && stEl.value === 'TAKSONOMI_RINGKAS') stEl.value = '';
+        const curItem = DATA.find(x => x.kode_sdki === selectedKode);
+        if (curItem && curItem.sumber_data === 'TAKSONOMI_RINGKAS') {
+          const firstVer = DATA.find(x => x.sumber_data !== 'TAKSONOMI_RINGKAS');
+          if (firstVer) {
+            selectedKode = firstVer.kode_sdki;
+            if (!learningMode && !cpptMode && !feedbackMode && !auditMode) renderDetail();
+          }
+        }
+      }
+      renderList();
+    }
+
+    function onStatusSelectChange(val) {
+      if (val === 'TAKSONOMI_RINGKAS' && !showRingkas) {
+        showRingkas = true;
+      }
+      renderList();
+    }
+
+    function renderDiagCard(item, qRaw) {
+      const isRingkas = item.sumber_data === 'TAKSONOMI_RINGKAS';
+      const isActive = item.kode_sdki === selectedKode && !learningMode && !cpptMode && !feedbackMode && !auditMode;
+      const jBadge = item.jenis_rsj === 'JIWA' ? '<span class="badge-jiwa">JIWA</span>' : '<span class="badge-fisik">NON-JIWA</span>';
+      const vBadge = isRingkas
+        ? '<span class="badge-ringkas">Ringkas</span>'
+        : '<span class="badge-verif">Lengkap</span>';
+      const snipObj = qRaw ? findSearchSnippet(item, qRaw) : null;
+      const snipHtml = (snipObj && snipObj.label !== 'Kode SDKI' && snipObj.label !== 'Diagnosis' && snipObj.label !== 'Subkategori')
+        ? `<div class="diag-match-snip"><span class="diag-match-lbl">${esc(snipObj.label)}:</span>${hlText(snipObj.snippet, qRaw)}</div>`
+        : '';
+      return `<div class="diag-item ${isRingkas ? 'is-ringkas' : ''} ${isActive ? 'active' : ''}" onclick="selectDiagnosis('${item.kode_sdki}')">
+        <div class="diag-item-header">
+          <span class="badge-code">${hlText(item.kode_sdki, qRaw)}</span>
+          <div class="badge-group">${vBadge} ${jBadge}</div>
+        </div>
+        <div class="diag-title">${hlText(item.nama_diagnosis, qRaw)}</div>
+        <div class="diag-meta">${hlText(item.subkategori, qRaw)} &bull; ${esc(item.jenis_diagnosis)}</div>
+        ${snipHtml}
+      </div>`;
+    }
+
     function renderList() {
+      updateSidebarFilterCounters();
       const qRaw = getQuery();
       const q = qRaw.toLowerCase();
       const sub = document.getElementById('subcatSelect').value;
       const stFilter = document.getElementById('statusSelect').value;
       const listEl = document.getElementById('diagList');
+      const allowRingkas = showRingkas || stFilter === 'TAKSONOMI_RINGKAS';
 
       const filtered = DATA.filter(item => {
+        if (!allowRingkas && item.sumber_data === 'TAKSONOMI_RINGKAS') return false;
         if (activeFilter !== 'ALL' && item.jenis_rsj !== activeFilter) return false;
         if (sub && item.subkategori !== sub) return false;
         if (stFilter === 'VERIFIED' && item.sumber_data === 'TAKSONOMI_RINGKAS') return false;
@@ -824,26 +924,15 @@
         return;
       }
 
-      listEl.innerHTML = filtered.map(item => {
-        const isActive = item.kode_sdki === selectedKode && !learningMode && !cpptMode && !feedbackMode && !auditMode;
-        const jBadge = item.jenis_rsj === 'JIWA' ? '<span class="badge-jiwa">JIWA</span>' : '<span class="badge-fisik">NON-JIWA</span>';
-        const vBadge = item.sumber_data === 'TAKSONOMI_RINGKAS'
-          ? '<span class="badge-ringkas">Ringkas</span>'
-          : '<span class="badge-verif">Lengkap</span>';
-        const snipObj = q ? findSearchSnippet(item, qRaw) : null;
-        const snipHtml = (snipObj && snipObj.label !== 'Kode SDKI' && snipObj.label !== 'Diagnosis' && snipObj.label !== 'Subkategori')
-          ? `<div class="diag-match-snip"><span class="diag-match-lbl">${esc(snipObj.label)}:</span>${hlText(snipObj.snippet, qRaw)}</div>`
-          : '';
-        return `<div class="diag-item ${isActive ? 'active' : ''}" onclick="selectDiagnosis('${item.kode_sdki}')">
-          <div class="diag-item-header">
-            <span class="badge-code">${hlText(item.kode_sdki, qRaw)}</span>
-            <div class="badge-group">${vBadge} ${jBadge}</div>
-          </div>
-          <div class="diag-title">${hlText(item.nama_diagnosis, qRaw)}</div>
-          <div class="diag-meta">${hlText(item.subkategori, qRaw)} &bull; ${esc(item.jenis_diagnosis)}</div>
-          ${snipHtml}
-        </div>`;
-      }).join('');
+      const verifiedItems = filtered.filter(item => item.sumber_data !== 'TAKSONOMI_RINGKAS');
+      const ringkasItems = filtered.filter(item => item.sumber_data === 'TAKSONOMI_RINGKAS');
+
+      let html = verifiedItems.map(item => renderDiagCard(item, qRaw)).join('');
+      if (ringkasItems.length > 0) {
+        html += `<div class="diag-section-divider"><span>Taksonomi Ringkas (${ringkasItems.length})</span><small>Di Bawah Lengkap</small></div>`;
+        html += ringkasItems.map(item => renderDiagCard(item, qRaw)).join('');
+      }
+      listEl.innerHTML = html;
     }
 
     function selectDiagnosis(kode) {
@@ -4071,6 +4160,7 @@ Status Verifikasi: ${verifLine}`;
     }
 
     // Initialize
+    syncEnvironmentVisibility();
     renderList();
     renderDetail();
   </script>

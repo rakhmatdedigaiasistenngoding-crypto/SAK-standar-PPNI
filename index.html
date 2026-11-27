@@ -208,6 +208,18 @@
       flex-shrink: 0;
     }
     footer.app-footer strong { color: var(--text); font-weight: 700; }
+    .visit-stats-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 2px 9px;
+      border-radius: 999px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      font-size: 11px;
+      color: var(--text-muted);
+    }
+    .visit-stats-badge strong { color: var(--primary); }
 
     /* Sidebar */
     .sidebar { width: var(--sidebar-w); background: var(--card-bg); border-right: 1px solid var(--border); display: flex; flex-direction: column; flex-shrink: 0; }
@@ -579,6 +591,7 @@
   <!-- Footer -->
   <footer class="app-footer">
     <span>Standar Asuhan Keperawatan 3S PPNI (SDKI &bull; SLKI &bull; SIKI) &mdash; RS Jiwa Daerah Provinsi Lampung</span>
+    <span id="visitStatsBadge" class="visit-stats-badge" title="Statistik kunjungan &amp; waktu akses tersimpan di Google Sheet tanpa mencatat IP">Kunjungan: <strong id="visitTotalNum">-</strong></span>
     <span>Pengembang Web: <strong>Rakhmat Dedi G</strong> &copy; 2026</span>
   </footer>
 
@@ -3446,6 +3459,78 @@ Status Verifikasi: ${verifLine}`;
     const FEEDBACK_FORM_URL = 'https://docs.google.com/forms/d/e/1FAIpQLScx56IwZ6zsDdXZIKaOMZogtcMV81g8scpQfNVfV74JMphCuA/viewform';
     const FEEDBACK_FORM_EMBED_URL = FEEDBACK_FORM_URL + '?embedded=true';
     const FEEDBACK_API_URL = 'https://script.google.com/macros/s/AKfycbzw-ER4MLdwa7DdHyGhyCIJ0wDCmw9rcZNs6rtpykfyQDNc7uhbp3RpFda5ZHxptBMt/exec';
+    const WEB_APP_VERSION = 'v2.19';
+    const VISIT_SESSION_KEY = 'sak_3s_visit_logged_v1';
+    const VISIT_CACHE_KEY = 'sak_3s_visit_cache_v1';
+
+    function getAccessSourceLabel() {
+      try {
+        if (window.location && window.location.protocol === 'file:') return 'Offline (File)';
+        return isOnlineDeployment() ? 'Online (GitHub Pages)' : 'Lokal (SIMRS)';
+      } catch (e) {
+        return 'Web 3S';
+      }
+    }
+
+    function renderVisitStatsBadge(totalVisits, todayVisits, lastVisit, isCached) {
+      const badge = document.getElementById('visitStatsBadge');
+      if (!badge || typeof totalVisits !== 'number' || !isFinite(totalVisits)) return;
+      const fmtTotal = totalVisits.toLocaleString('id-ID');
+      const todayHtml = (typeof todayVisits === 'number' && todayVisits > 0)
+        ? ` <span style="opacity:0.85;">(Hari ini: ${todayVisits.toLocaleString('id-ID')})</span>`
+        : '';
+      badge.innerHTML = `Kunjungan: <strong>${esc(fmtTotal)}</strong>${todayHtml}`;
+      const suffix = isCached ? ' [cache lokal/offline]' : '';
+      badge.title = `Total ${fmtTotal} kunjungan (tanpa IP). Terakhir tercatat: ${lastVisit || '-'}${suffix}`;
+    }
+
+    async function trackAndLoadVisitCounter() {
+      try {
+        const cachedRaw = typeof localStorage !== 'undefined' ? localStorage.getItem(VISIT_CACHE_KEY) : null;
+        if (cachedRaw) {
+          const c = JSON.parse(cachedRaw);
+          if (c && typeof c.total_visits === 'number') {
+            renderVisitStatsBadge(c.total_visits, c.today_visits, c.last_visit, true);
+          }
+        }
+      } catch (e) {}
+
+      let alreadyLogged = false;
+      try {
+        alreadyLogged = typeof sessionStorage !== 'undefined' && sessionStorage.getItem(VISIT_SESSION_KEY) === '1';
+      } catch (e) { alreadyLogged = false; }
+
+      try {
+        const sep = FEEDBACK_API_URL.includes('?') ? '&' : '?';
+        const params = new URLSearchParams({
+          action: 'visit',
+          source: getAccessSourceLabel(),
+          ver: WEB_APP_VERSION,
+          _t: String(Date.now())
+        });
+        if (alreadyLogged) params.set('stats_only', '1');
+        const res = await fetch(FEEDBACK_API_URL + sep + params.toString(), { method: 'GET', cache: 'no-store' });
+        if (!res.ok) return;
+        const json = await res.json();
+        if (json && json.status === 'ok' && typeof json.total_visits === 'number') {
+          if (!alreadyLogged) {
+            try { if (typeof sessionStorage !== 'undefined') sessionStorage.setItem(VISIT_SESSION_KEY, '1'); } catch (e) {}
+          }
+          try {
+            if (typeof localStorage !== 'undefined') {
+              localStorage.setItem(VISIT_CACHE_KEY, JSON.stringify({
+                total_visits: json.total_visits,
+                today_visits: json.today_visits || 0,
+                last_visit: json.last_visit || '-'
+              }));
+            }
+          } catch (e) {}
+          renderVisitStatsBadge(json.total_visits, json.today_visits || 0, json.last_visit || '-', false);
+        }
+      } catch (e) {
+        // Diamkan error jaringan agar mode offline tetap lancar
+      }
+    }
 
     let feedbackState = {
       items: [],
@@ -4338,6 +4423,7 @@ Status Verifikasi: ${verifLine}`;
     syncEnvironmentVisibility();
     renderList();
     renderDetail();
+    trackAndLoadVisitCounter();
   </script>
 </body>
 </html>

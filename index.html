@@ -3456,10 +3456,11 @@ Status Verifikasi: ${verifLine}`;
     // =========================================================================
     // MODUL MASUKAN, KOREKSI & DISKUSI PERAWAT (GOOGLE FORM + APPS SCRIPT JSON)
     // =========================================================================
-    const FEEDBACK_FORM_URL = 'https://docs.google.com/forms/d/e/1FAIpQLScx56IwZ6zsDdXZIKaOMZogtcMV81g8scpQfNVfV74JMphCuA/viewform';
+    const FEEDBACK_FORM_URL = 'https://docs.google.com/forms/d/e/1FAIpQLScefs701JJqt37ARA6uQFfupesY1XXACQwfgIXtUcZRlPCu6w/viewform';
     const FEEDBACK_FORM_EMBED_URL = FEEDBACK_FORM_URL + '?embedded=true';
+    const FEEDBACK_FORM_UPLOAD_URL = 'https://docs.google.com/forms/d/e/1FAIpQLScx56IwZ6zsDdXZIKaOMZogtcMV81g8scpQfNVfV74JMphCuA/viewform';
     const FEEDBACK_API_URL = 'https://script.google.com/macros/s/AKfycbzw-ER4MLdwa7DdHyGhyCIJ0wDCmw9rcZNs6rtpykfyQDNc7uhbp3RpFda5ZHxptBMt/exec';
-    const WEB_APP_VERSION = 'v2.19';
+    const WEB_APP_VERSION = 'v2.20';
     const VISIT_SESSION_KEY = 'sak_3s_visit_logged_v1';
     const VISIT_CACHE_KEY = 'sak_3s_visit_cache_v1';
 
@@ -3724,11 +3725,12 @@ Status Verifikasi: ${verifLine}`;
             </div>
           </div>
           <div class="fb-toolbar">
-            <div style="font-size:12.5px; color:var(--text-muted); max-width:640px;">
-              Pesan masuk ke Google Sheet pengembang lalu balasannya tampil di <strong>Tab 2</strong>. Jika Google Form mengaktifkan fitur <em>Upload Foto</em>, kotak sematan di bawah akan meminta dibuka di tab baru agar dapat login akun Google.
+            <div style="font-size:12.5px; color:var(--text-muted); max-width:600px;">
+              <strong>Formulir Cepat di Dalam Web (Tanpa Login Google):</strong> Isi langsung di bawah dan pesan otomatis masuk ke Google Sheet. Jika Anda perlu melampirkan gambar/screenshot tampilan web, klik tombol <strong>Kirim Dengan Lampiran Gambar</strong> (membuka tab baru, perlu login Google).
             </div>
             <div style="display:flex; gap:8px; flex-wrap:wrap;">
-              <a class="btn btn-feedback" href="${esc(FEEDBACK_FORM_URL)}" target="_blank" rel="noopener">Buka Google Form (Mendukung Upload Foto) &rarr;</a>
+              <a class="btn btn-feedback" href="${esc(FEEDBACK_FORM_UPLOAD_URL)}" target="_blank" rel="noopener">Kirim Dengan Lampiran Gambar (Tab Baru) &rarr;</a>
+              <a class="btn" href="${esc(FEEDBACK_FORM_URL)}" target="_blank" rel="noopener">Buka Form Cepat (Tab Baru)</a>
               <button class="btn" onclick="switchFeedbackTab(1)">Lihat Daftar Tanggapan${countTxt}</button>
             </div>
           </div>
